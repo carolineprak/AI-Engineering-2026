@@ -27,5 +27,7 @@ py-modules = [
     "streamlit_app",
     "northwind_rag_agent",
     "northwind_streamlit",
+    "toy_crm_mcp",
+    "toy_crm_adk_agent",
 ]
 
