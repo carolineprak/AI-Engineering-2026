@@ -30,5 +30,6 @@ py-modules = [
     "toy_crm_mcp",
     "toy_crm_adk_agent",
     "agent_card",
+    "agent_card_client",
 ]
 
