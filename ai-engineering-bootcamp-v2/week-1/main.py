@@ -67,7 +67,9 @@ class CitationSource(BaseModel):
 class AskRequest(BaseModel):
     """Typed request body so bad input is rejected before we spend tokens."""
 
-    question: str
+    # Optional so missing/null/blank all take the graceful empty-question path
+    # (200 + refused message) instead of FastAPI 422 / bare 400.
+    question: str | None = None
     force_bad: bool = False  # Stage 3 demo knob — first attempt breaks schema on purpose.
     model: str | None = None  # Stage 4 — optional override to swap models live.
     top_k: int = Field(default=5, ge=1, le=20)  # Session 2 RAG — retrieval depth
@@ -342,13 +344,31 @@ def delete_ingest(document_id: str) -> dict:
     return {"document_id": doc_id, "status": "deleted"}
 
 
+EMPTY_QUESTION_MESSAGE = "Please provide a non-empty question."
+
+
 @app.post("/ask")
 def ask(body: AskRequest) -> AskResponse:
     """RAG ask: retrieve top-k chunks, ground the prompt, then Session 1 generation."""
 
     question = (body.question or "").strip()
     if not question:
-        raise HTTPException(status_code=400, detail="question must not be empty")
+        # Graceful empty/missing input: same contract as a refusal, no LLM/retrieve spend.
+        return AskResponse(
+            question="",
+            answer=Answer(
+                answer=EMPTY_QUESTION_MESSAGE,
+                confidence=1.0,
+                sources_needed=False,
+            ),
+            refused=True,
+            sources=[],
+            tokens_used=0,
+            model=DEFAULT_MODEL,
+            latency_ms=0,
+            cost_usd=0.0,
+            retrieved_chunk_ids=[],
+        )
 
     model = resolve_model(body.model)
     last_error: str | None = None
