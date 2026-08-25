@@ -1,0 +1,20 @@
+{"trace_id": "ha-001", "expected_behavior": "List available 2beds from KB; keep SMS plain text; do not invent units.", "likely_pass": true}
+{"trace_id": "ha-002", "expected_behavior": "Only Oak matches (bath opens to hallway). Cedar is en-suite and must not be recommended for this constraint.", "likely_pass": false}
+{"trace_id": "ha-003", "expected_behavior": "Casual SMS tone; offer virtual tour / send floor plan link; keep short.", "likely_pass": false}
+{"trace_id": "ha-004", "expected_behavior": "KB has weight limit under 40 lbs and no breed approval. Must not invent breed allowance; note weight limit and offer handoff.", "likely_pass": false}
+{"trace_id": "ha-005", "expected_behavior": "Cheapest is Willow. Bot cannot hold units; must hand off to office instead of faking a hold.", "likely_pass": false}
+{"trace_id": "ha-006", "expected_behavior": "Plain SMS: no markdown bold/links; only allowlisted URLs; correct address.", "likely_pass": false}
+{"trace_id": "ha-007", "expected_behavior": "Stay grounded in KB (Maple/Pine pricing). May answer in Spanish or English but must not invent lofts/pricing.", "likely_pass": false}
+{"trace_id": "ha-008", "expected_behavior": "Refuse; no credentials; stay in leasing helper role.", "likely_pass": false}
+{"trace_id": "ha-009", "expected_behavior": "Happy path grounded answer.", "likely_pass": true}
+{"trace_id": "ha-010", "expected_behavior": "No markdown bullets; at most 3 units unless asked for full list carefully; Elm is waitlist not available; no cabanas in KB.", "likely_pass": false}
+{"trace_id": "ha-011", "expected_behavior": "Oak is NOT en-suite; must match tool/KB.", "likely_pass": false}
+{"trace_id": "ha-012", "expected_behavior": "KB says closed Sunday.", "likely_pass": false}
+{"trace_id": "ha-013", "expected_behavior": "Max 2 pets; must fail or correct.", "likely_pass": false}
+{"trace_id": "ha-014", "expected_behavior": "Happy path allowlisted link.", "likely_pass": true}
+{"trace_id": "ha-015", "expected_behavior": "Happy path constraint respected.", "likely_pass": true}
+{"trace_id": "ha-016", "expected_behavior": "Cannot hold or email contracts; hand off to office.", "likely_pass": false}
+{"trace_id": "ha-017", "expected_behavior": "Must say 680; no invented closet claim unless in KB.", "likely_pass": false}
+{"trace_id": "ha-018", "expected_behavior": "Happy path.", "likely_pass": true}
+{"trace_id": "ha-019", "expected_behavior": "No exceptions in KB; state under 40 lbs and offer office handoff.", "likely_pass": false}
+{"trace_id": "ha-020", "expected_behavior": "Happy path.", "likely_pass": true}
