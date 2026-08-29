@@ -10,3 +10,7 @@ __pycache__/
 venv/
 .venv/
 env/
+
+# Session 5 durable memory (local/Render disk)
+data/
+*.db

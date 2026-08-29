@@ -5,3 +5,4 @@ python-dotenv
 streamlit
 qdrant-client
 langchain-text-splitters
+eval_type_backport

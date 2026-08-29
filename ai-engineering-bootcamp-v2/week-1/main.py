@@ -11,6 +11,13 @@ from fastapi.responses import RedirectResponse
 from openai import APIError, BadRequestError, NotFoundError, OpenAI
 from pydantic import BaseModel, Field, ValidationError
 
+from memory_store import (
+    ALLOWED_KEYS,
+    delete_memory,
+    format_memory_block,
+    list_memory,
+    upsert_memory,
+)
 from vector_store import delete_document_chunks, ingest_text, qdrant_healthcheck, retrieve
 
 # Load .env from this folder so the key is found regardless of shell working directory.
@@ -73,6 +80,7 @@ class AskRequest(BaseModel):
     force_bad: bool = False  # Stage 3 demo knob — first attempt breaks schema on purpose.
     model: str | None = None  # Stage 4 — optional override to swap models live.
     top_k: int = Field(default=5, ge=1, le=20)  # Session 2 RAG — retrieval depth
+    user_id: str | None = None  # Session 5 — load durable preferences for this user
 
 
 class AskResponse(BaseModel):
@@ -93,6 +101,29 @@ class AskResponse(BaseModel):
     latency_ms: int
     cost_usd: float
     retrieved_chunk_ids: list[str] = Field(default_factory=list)
+    memory_used: dict[str, str] = Field(default_factory=dict)
+
+
+class MemoryWriteRequest(BaseModel):
+    """Persist one gated preference for cross-session recall."""
+
+    user_id: str
+    key: str
+    value: str
+
+
+class MemoryWriteResponse(BaseModel):
+    user_id: str
+    key: str
+    value: str
+    updated_at: str
+    status: str
+
+
+class MemoryListResponse(BaseModel):
+    user_id: str
+    memories: dict[str, str]
+    allowed_keys: list[str]
 
 
 REFUSAL_PHRASE = "I don't have enough information to answer that."
@@ -101,7 +132,9 @@ RAG_GROUNDING_PROMPT = """Answer using ONLY the context below.
 If the context does not contain the answer, say:
 "I don't have enough information to answer that."
 Cite the document_id of each chunk you used.
+If user memory is provided, personalize lightly (e.g. use preferred_name) but do not invent policies from memory alone.
 
+{memory_block}
 Context:
 {retrieved_chunks}
 
@@ -129,9 +162,17 @@ def format_retrieved_context(hits: list[dict]) -> str:
     return "\n\n".join(blocks)
 
 
-def build_grounding_prompt(question: str, hits: list[dict]) -> str:
+def build_grounding_prompt(
+    question: str,
+    hits: list[dict],
+    memories: dict[str, str] | None = None,
+) -> str:
     """Build the RAG user prompt: answer only from context, cite, or refuse."""
+    memory_block = format_memory_block(memories or {})
+    if memory_block:
+        memory_block = memory_block + "\n"
     return RAG_GROUNDING_PROMPT.format(
+        memory_block=memory_block,
         retrieved_chunks=format_retrieved_context(hits),
         question=question.strip(),
     )
@@ -344,6 +385,46 @@ def delete_ingest(document_id: str) -> dict:
     return {"document_id": doc_id, "status": "deleted"}
 
 
+@app.get("/memory/keys")
+def memory_keys() -> dict:
+    """List keys the write gate allows."""
+    return {"allowed_keys": sorted(ALLOWED_KEYS)}
+
+
+@app.get("/memory/{user_id}")
+def get_user_memory(user_id: str) -> MemoryListResponse:
+    """Return all durable memories for a user (cross-session recall)."""
+    uid = (user_id or "").strip()
+    if not uid:
+        raise HTTPException(status_code=400, detail="user_id must not be empty")
+    return MemoryListResponse(
+        user_id=uid,
+        memories=list_memory(uid),
+        allowed_keys=sorted(ALLOWED_KEYS),
+    )
+
+
+@app.post("/memory")
+def write_memory(body: MemoryWriteRequest) -> MemoryWriteResponse:
+    """Persist one gated preference. Survives process restart (SQLite)."""
+    try:
+        saved = upsert_memory(body.user_id, body.key, body.value)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"Memory write failed: {exc}") from exc
+    return MemoryWriteResponse(**saved)
+
+
+@app.delete("/memory/{user_id}")
+def clear_user_memory(user_id: str, key: str | None = None) -> dict:
+    """Forget one key (?key=...) or all memories for a user."""
+    try:
+        return delete_memory(user_id, key)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 EMPTY_QUESTION_MESSAGE = "Please provide a non-empty question."
 
 
@@ -368,11 +449,15 @@ def ask(body: AskRequest) -> AskResponse:
             latency_ms=0,
             cost_usd=0.0,
             retrieved_chunk_ids=[],
+            memory_used={},
         )
 
     model = resolve_model(body.model)
     last_error: str | None = None
     start = time.perf_counter()
+
+    user_id = (body.user_id or "").strip()
+    memories = list_memory(user_id) if user_id else {}
 
     try:
         hits = retrieve(question, top_k=body.top_k, openai_client=client)
@@ -381,7 +466,7 @@ def ask(body: AskRequest) -> AskResponse:
 
     chunk_ids = retrieved_chunk_ids_from_hits(hits)
     sources = sources_from_hits(hits)
-    grounded_prompt = build_grounding_prompt(question, hits)
+    grounded_prompt = build_grounding_prompt(question, hits, memories)
 
     # Stage 3: one retry keeps the logic legible while still protecting callers.
     for attempt in range(2):
@@ -410,6 +495,7 @@ def ask(body: AskRequest) -> AskResponse:
                 latency_ms=latency_ms,
                 cost_usd=round(cost_usd, 6),
                 retrieved_chunk_ids=chunk_ids,
+                memory_used=memories,
             )
         except HTTPException:
             raise

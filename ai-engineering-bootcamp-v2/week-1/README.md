@@ -67,11 +67,54 @@ python test_all_stages.py
 
 ```
 week-1/
-├── main.py              # Full system (stages 1–5 combined)
+├── main.py              # Full system (stages 1–5 + Session 5 memory)
+├── memory_store.py      # SQLite durable memory + write gate
+├── memory_ui.py         # Streamlit cross-session recall demo
+├── AGENTS.md            # Write-gate rules (above compaction line)
 ├── serve_stage1.py … serve_stage5.py
 ├── demo_page.py         # Streamlit test UI
+├── rag_ui.py            # Ingest + ask thin client
 ├── test_all_stages.py   # Automated stage smoke tests
 ├── requirements.txt
 ├── .env.example
 └── .gitignore
+```
+
+## Session 5 — durable memory (Path A)
+
+Northwind remembers a few **stable preferences** across sessions (not longer chat history).
+
+### Five memory questions
+
+| Question | Answer |
+|----------|--------|
+| **What do I keep?** | `preferred_name`, `preferred_language`, `work_mode`, `role`, `last_policy_topic` only |
+| **When do I write?** | Explicit `POST /memory` when the user saves a preference (write gate rejects other keys) |
+| **Where does it live?** | SQLite file (`data/memory.db` locally; set `MEMORY_DB_PATH` on Render if needed) |
+| **How do I get it back?** | `GET /memory/{user_id}`; `/ask` with `user_id` injects memory into the prompt |
+| **When do I forget?** | `DELETE /memory/{user_id}` (all) or `?key=` (one key). No auto-decay yet |
+
+### Prove cross-session recall
+
+```bash
+# Terminal 1 — API
+uvicorn main:app --host 127.0.0.1 --port 8000
+
+# Terminal 2 — UI
+streamlit run memory_ui.py
+```
+
+1. Save `preferred_name=Caroline` for a `user_id`.
+2. Click **New session** (clears local UI only).
+3. **Load memory** — the preference returns without retyping.
+4. Optional: **Ask with user_id** and confirm `memory_used` in the response.
+
+### API quick check
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/memory \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"demo-1","key":"preferred_name","value":"Caroline"}'
+
+curl -s http://127.0.0.1:8000/memory/demo-1
 ```
