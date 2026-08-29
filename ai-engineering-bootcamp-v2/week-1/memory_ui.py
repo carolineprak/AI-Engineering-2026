@@ -26,7 +26,9 @@ DEFAULT_API_URL = (
 
 def call_json(method: str, url: str, payload: dict | None = None) -> tuple[int, dict | str]:
     try:
-        response = httpx.request(method, url, json=payload, timeout=120.0)
+        # trust_env=False avoids local HTTP(S)_PROXY tunnel 403s (same fix as search_docs).
+        with httpx.Client(timeout=120.0, trust_env=False) as client:
+            response = client.request(method, url, json=payload)
     except httpx.HTTPError as exc:
         return 0, f"Request failed: {exc}"
     try:
