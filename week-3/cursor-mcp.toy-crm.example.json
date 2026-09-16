@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "toy-crm": {
+      "command": "/Users/caroline/AI-Engineering-2026/week-3/.venv/bin/python",
+      "args": [
+        "/Users/caroline/AI-Engineering-2026/week-3/toy_crm_mcp.py"
+      ]
+    }
+  }
+}
