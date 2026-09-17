@@ -2,7 +2,7 @@
 
 Caroline Prak’s public fork of the AI Engineering Bootcamp work — cleaned into flat week folders.
 
-**Live Northwind API:** https://ai-internship-bnrf.onrender.com  
+**Live demo:** ask me for a demo link  
 **Repo:** https://github.com/carolineprak/AI-Engineering-2026  
 
 Private product work (Rainflowers, Understories) lives in separate private repos — not here.

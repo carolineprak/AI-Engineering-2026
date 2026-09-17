@@ -22,4 +22,4 @@ uvicorn main:app --host 127.0.0.1 --port 8000
 streamlit run memory_ui.py
 ```
 
-Live: https://ai-internship-bnrf.onrender.com (`/memory`, `/docs`, `/health`)
+Live demo: ask me for a demo link (`/memory`, `/docs`, `/health`).

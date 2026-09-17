@@ -12,7 +12,7 @@ Google ADK multi-agent labs plus the **Northwind Path A** agent that calls the W
 ```bash
 cd week-3
 source .venv/bin/activate   # Python 3.12
-# RAG_API_URL=https://ai-internship-bnrf.onrender.com
+# RAG_API_URL=   # ask for the demo link if you need the live API
 python northwind_rag_agent.py
 streamlit run northwind_streamlit.py
 ```
